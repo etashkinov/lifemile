@@ -5,8 +5,8 @@ import matplotlib.patches as patches
 from PIL.ExifTags import TAGS, GPSTAGS
 from file_source import FileSourceStream
 from sql_persister import SQLPersister
-from dateutil import parser
 import json
+from datetime import datetime
 
 
 def extract_faces(image):
@@ -118,13 +118,25 @@ def get_lat_lon(exif_data):
 def extract_data(source):
     image = source.get_image()
     faces = extract_faces(image)
-    exif = get_exif_data(image)
-    geo = get_lat_lon(exif)
-    time_str = exif['DateTimeOriginal']
-    timestamp = parser.parse(time_str)
-    print(time_str, timestamp)
+
+    try:
+        exif = get_exif_data(image)
+        geo = get_lat_lon(exif)
+        timestamp = get_image_date(exif, source)
+    except Exception as e:
+        print("No exif for", source.get_id(), e)
+        geo = None, None
+        timestamp = None
 
     return {"type": source.get_type(), "source_id": source.get_id(), "time": timestamp, "geo": geo, "faces": faces}
+
+
+def get_image_date(exif, source):
+    if 'DateTimeOriginal' in exif:
+        timestamp = datetime.strptime(exif['DateTimeOriginal'], '%Y:%m:%d %H:%M:%S')
+    else:
+        timestamp = source.get_modify_date()
+    return timestamp
 
 
 def dump(source_stream, persister):
@@ -134,9 +146,9 @@ def dump(source_stream, persister):
         source = source_stream.next()
 
 
-def dump_folder():
+def dump_folder(folder):
     persister = SQLPersister(port=5433)
-    stream = FileSourceStream(r'\\corpeufs11\DPA_Engineering\Office-BentimaHouse\Photos\2016-12-08-xmas-lunch', persister.get_last_id())
+    stream = FileSourceStream(folder, persister.get_last_id())
     dump(stream, persister)
 
 
@@ -176,4 +188,5 @@ def fit_faces():
         persister.update_face(face[0], person)
         print("Face", face[0], "assigned to person", person)
 
-fit_faces()
+# dump_folder(sys.argv[1])
+# fit_faces()

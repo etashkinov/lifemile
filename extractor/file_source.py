@@ -1,5 +1,6 @@
+import time
 from PIL import Image
-from os import walk, path
+from os import walk, path, os
 
 
 class FileSource:
@@ -13,6 +14,9 @@ class FileSource:
 
     def get_image(self):
         return Image.open(self.filename)
+
+    def get_modify_date(self):
+        return time.ctime(os.path.getmtime(self.filename))
 
     def get_type(self):
         return self.__TYPE
