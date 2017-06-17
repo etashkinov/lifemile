@@ -1,6 +1,7 @@
 import postgresql
 import json
 
+
 class SQLPersister:
     def __init__(self, user="postgres", password="postgres", host="localhost", port=5432, database="lifemile") -> None:
         self.db = postgresql.open('pq://{}:{}@{}:{}/{}'.format(user, password, host, port, database))
@@ -22,7 +23,12 @@ class SQLPersister:
                 photo_stmt(photo_id, face_id, encoding)
 
     def get_last_id(self):
-        return self.db.prepare("SELECT source_id FROM photo ORDER BY id DESC LIMIT 1")()[0][0]
+        ids = self.db.prepare("SELECT source_id FROM photo ORDER BY id DESC LIMIT 1")()
+        return ids[0][0] if len(ids) > 0 else None
+
+    def exists(self, source_id):
+        ids = self.db.prepare("SELECT source_id FROM photo WHERE source_id = $1")(source_id)
+        return len(ids) > 0
 
     def get_faces(self):
         return self.db.prepare("SELECT id, encoding FROM face")()

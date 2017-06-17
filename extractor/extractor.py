@@ -1,9 +1,10 @@
 import face_recognition
 import numpy as np
+import sys
 from matplotlib import pyplot as plt
 import matplotlib.patches as patches
 from PIL.ExifTags import TAGS, GPSTAGS
-from file_source import FileSourceStream
+from file_source import FileSourceStream, FileSource
 from sql_persister import SQLPersister
 import json
 from datetime import datetime
@@ -142,18 +143,24 @@ def get_image_date(exif, source):
 def dump(source_stream, persister):
     source = source_stream.next()
     while source:
-        persister.persist(extract_data(source))
+        print("Extract from", source.get_id())
+        if not persister.exists(source.get_id()):
+            data = extract_data(source)
+            print("Extracted data. Timestamp", data['time'], ", geo", data['geo'], ", faces", [f[0] for f in data['faces']])
+            persister.persist(data)
+        else:
+            print(source.get_id(), "already exists")
         source = source_stream.next()
 
 
 def dump_folder(folder):
-    persister = SQLPersister(port=5433)
-    stream = FileSourceStream(folder, persister.get_last_id())
+    persister = SQLPersister(port=5432, database="postgres")
+    stream = FileSourceStream(folder)
     dump(stream, persister)
 
 
 def fit_faces():
-    persister = SQLPersister(port=5433)
+    persister = SQLPersister(port=5432, database="postgres")
     faces = persister.get_faces()
 
     persons = {}
@@ -188,5 +195,8 @@ def fit_faces():
         persister.update_face(face[0], person)
         print("Face", face[0], "assigned to person", person)
 
-# dump_folder(sys.argv[1])
+
+dump_folder(sys.argv[1])
 # fit_faces()
+# data = extract_data(FileSource(r"E:\Старые фотографии\2007_04_26\IMG_0919.JPG"))
+# print(data)
