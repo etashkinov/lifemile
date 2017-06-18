@@ -2,6 +2,10 @@ import postgresql
 import json
 
 
+def get():
+    return SQLPersister(port=5432, database="postgres")
+
+
 class SQLPersister:
     def __init__(self, user="postgres", password="postgres", host="localhost", port=5432, database="lifemile") -> None:
         self.db = postgresql.open('pq://{}:{}@{}:{}/{}'.format(user, password, host, port, database))
@@ -69,4 +73,19 @@ class SQLPersister:
             " FROM person "
             " WHERE id = $1")(person_id)[0]['name']
 
+    def get_person_ids(self):
+        return self.db.prepare(
+            "SELECT id"
+            " FROM person "
+            " ORDER BY id")
 
+    def get_persons_by_days(self):
+        return self.db.prepare(
+            "select day, person_id, count(id) as cnt from "
+            "("
+            "   SELECT date_trunc('day', creation_time) as day, f.id, f.person_id "
+            "   FROM photo p "
+            "   join face f on f.photo_id = p.id "
+            ") as a "
+            "WHERE person_id is not null "
+            "group by day,person_id")
