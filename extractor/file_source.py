@@ -1,10 +1,11 @@
-import time
 from PIL import Image
 from os import walk, path
 import os
 from datetime import datetime
 
+
 class FileSource:
+
     __TYPE = "file"
 
     def __init__(self, filename) -> None:

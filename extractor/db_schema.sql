@@ -23,19 +23,3 @@ CREATE TABLE face
    face_id varchar  not null,
    encoding jsonb
     );
-
---ALTER TABLE face
---DROP CONSTRAINT "face_face_id_key";
---
-----delete  from photo
---
---select * from photo
---select count(*) from face
---
---select * from face
-
-select f.*, p.* from photo p
-left join face f  on p.id = f.photo_id
-where face_id='788-1589-1343-1034'
-
-select * from

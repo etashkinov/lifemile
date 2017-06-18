@@ -8,7 +8,8 @@ class SQLPersister:
 
     def persist(self, photo):
         with self.db.xact():
-            photo_stmt = self.db.prepare("INSERT INTO photo(source_type, source_id, latitude, longitude, creation_time) VALUES ($1, $2, $3, $4, $5)")
+            photo_stmt = self.db.prepare(
+                "INSERT INTO photo(source_type, source_id, latitude, longitude, creation_time) VALUES ($1, $2, $3, $4, $5)")
             source_id = photo['source_id']
             photo_stmt(photo['type'], source_id, photo['geo'][0], photo['geo'][1], photo['time'])
 
@@ -33,6 +34,9 @@ class SQLPersister:
     def get_faces(self):
         return self.db.prepare("SELECT id, encoding FROM face")()
 
+    def get_unknown_faces(self):
+        return self.db.prepare("SELECT id, encoding FROM face WHERE person_id is null ORDER BY id")()
+
     def update_face(self, id, person_id):
         return self.db.prepare("UPDATE face SET person_id = $1 WHERE id = $2")(person_id, id)
 
@@ -44,3 +48,25 @@ class SQLPersister:
             print(name, "already exists")
 
         return self.db.prepare("SELECT id FROM person WHERE name=$1")(name)[0][0]
+
+    def get_person_faces(self, person_id):
+        return self.db.prepare(
+            "SELECT p.source_id, p.source_type, f.face_id"
+            " FROM face f "
+            " JOIN photo p ON p.id = f.photo_id "
+            " WHERE f.person_id = $1")(
+            person_id)
+
+    def get_persons(self):
+        return self.db.prepare(
+            "SELECT person_id, encoding"
+            " FROM face "
+            " WHERE person_id is not null")()
+
+    def get_person(self, person_id):
+        return self.db.prepare(
+            "SELECT name"
+            " FROM person "
+            " WHERE id = $1")(person_id)[0]['name']
+
+

@@ -11,11 +11,15 @@ from datetime import datetime
 
 
 def extract_faces(image):
-    image_array = np.array(image, dtype=np.uint8)
-    face_locations = face_recognition.face_locations(image_array)
-    encodings = face_recognition.face_encodings(image_array, known_face_locations=face_locations)
+    try:
+        image_array = np.array(image, dtype=np.uint8)
+        face_locations = face_recognition.face_locations(image_array)
+        encodings = face_recognition.face_encodings(image_array, known_face_locations=face_locations)
 
-    return list(zip(face_locations, encodings))
+        return list(zip(face_locations, encodings))
+    except Exception as e:
+        print("Failed to get faces:", e)
+        return [("error", str(e))]
 
 
 def show_faces(image, faces):
@@ -143,13 +147,17 @@ def get_image_date(exif, source):
 def dump(source_stream, persister):
     source = source_stream.next()
     while source:
-        print("Extract from", source.get_id())
-        if not persister.exists(source.get_id()):
-            data = extract_data(source)
-            print("Extracted data. Timestamp", data['time'], ", geo", data['geo'], ", faces", [f[0] for f in data['faces']])
-            persister.persist(data)
-        else:
-            print(source.get_id(), "already exists")
+        try:
+            print("Extract from", source.get_id())
+            if not persister.exists(source.get_id()):
+                data = extract_data(source)
+                print("Extracted data. Timestamp", data['time'], ", geo", data['geo'], ", faces",
+                      [f[0] for f in data['faces']])
+                persister.persist(data)
+            else:
+                print(source.get_id(), "already exists")
+        except Exception as e:
+            print("Failed to dump", source.get_id(), ":", e)
         source = source_stream.next()
 
 
