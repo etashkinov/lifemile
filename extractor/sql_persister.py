@@ -3,7 +3,7 @@ import json
 
 
 def get():
-    return SQLPersister(port=5432, database="postgres")
+    return SQLPersister(port=5433, database="lifemile")
 
 
 class SQLPersister:
@@ -39,13 +39,12 @@ class SQLPersister:
         return self.db.prepare("SELECT id, encoding FROM face")()
 
     def get_unknown_faces(self):
-        return self.db.prepare("SELECT id, encoding FROM face WHERE person_id is null ORDER BY id")()
+        return self.db.prepare("SELECT id, encoding FROM face WHERE person_id IS NULL ORDER BY id")()
 
     def update_face(self, id, person_id):
         return self.db.prepare("UPDATE face SET person_id = $1 WHERE id = $2")(person_id, id)
 
     def create_person(self, name):
-
         try:
             self.db.prepare("INSERT INTO person(name) VALUES ($1)")(name)
         except postgresql.exceptions.UniqueError:
@@ -65,7 +64,7 @@ class SQLPersister:
         return self.db.prepare(
             "SELECT person_id, encoding"
             " FROM face "
-            " WHERE person_id is not null")()
+            " WHERE person_id IS NOT NULL")()
 
     def get_person(self, person_id):
         return self.db.prepare(
@@ -81,11 +80,11 @@ class SQLPersister:
 
     def get_persons_by_days(self):
         return self.db.prepare(
-            "select day, person_id, count(id) as cnt from "
+            "SELECT day, person_id, count(id) AS cnt FROM "
             "("
-            "   SELECT date_trunc('day', creation_time) as day, f.id, f.person_id "
+            "   SELECT date_trunc('day', creation_time) AS day, f.id, f.person_id "
             "   FROM photo p "
-            "   join face f on f.photo_id = p.id "
-            ") as a "
-            "WHERE person_id is not null "
-            "group by day,person_id")
+            "   JOIN face f ON f.photo_id = p.id "
+            ") AS a "
+            "WHERE person_id IS NOT NULL "
+            "GROUP BY day,person_id")

@@ -1,55 +1,52 @@
 import json
-from collections import Counter
-
 import numpy as np
 import face_recognition
 
-from sql_persister import SQLPersister
+import sql_persister
+
+__CONFIDENCE_THRESHOLD__ = 0.8
 
 
 def fit_faces():
-    persister = SQLPersister(port=5432, database="postgres")
+    persister = sql_persister.get()
     faces = persister.get_unknown_faces()
 
     persons = get_persons(persister)
 
     for face in faces:
-        # print("Face", face[0])
-        votes = []
         try:
-            match = None
-            enc_array = np.array(json.loads(face[1]))
-            for person in persons:
-                # print("Person", person)
-                result = face_recognition.compare_faces(persons[person], enc_array)
-                # print("Comparison", Counter(result))
-                vote = 0.0
-                for r in result:
-                    if r:
-                        vote += 1
-
-                vote = vote/len(result)
-                # print("Vote", vote)
-
-                if vote > 0 and (not match or match[1] < vote):
-                    match = person, vote
-                #    print("New match", match)
-                votes.append(vote)
-
-            if not match or match[1] < 0.8:
-                name = "Person " + str(len(persons))
-                person = persister.create_person(name)
-                persons[person] = [enc_array]
-                # print("New person found", name, person)
-            else:
-                person = match[0]
-                persons[person].append(enc_array)
-                # print("Person detected", person)
-
-            persister.update_face(face[0], person)
-            print("Face", face[0], "assigned to person", persister.get_person(person), "with confidence", match[1] if match else None)
+            fit_face(face, persister, persons)
         except Exception as e:
-            print("Failed to assign face to person:", e)
+            print("Failed to assign face", face[0], "to person:", e)
+
+
+def fit_face(face, persister, persons):
+    face_encoding = np.array(json.loads(face[1]))
+    matched_person, confidence = match_face(face_encoding, persons)
+    if not matched_person:
+        matched_person = add_new_person(persons)
+
+    persons[matched_person].append(face_encoding)
+    persister.update_face(face[0], matched_person)
+    print("Face", face[0], "assigned to person", persister.get_person(matched_person), "with confidence", confidence)
+
+
+def add_new_person(persons):
+    name = "Person " + str(len(persons))
+    person = sql_persister.get().create_person(name)
+    persons[person] = []
+    return person
+
+
+def match_face(face_encoding, persons):
+    match = None, None
+    for person in persons:
+        result = face_recognition.compare_faces(persons[person], face_encoding)
+        vote = np.mean([1 if r else 0 for r in result])
+        if vote > __CONFIDENCE_THRESHOLD__ and (not match[1] or match[1] < vote):
+            match = person, vote
+
+    return match
 
 
 def get_persons(persister):
@@ -63,5 +60,6 @@ def get_persons(persister):
         else:
             persons[person_id] = [encoding_]
     return persons
+
 
 fit_faces()
